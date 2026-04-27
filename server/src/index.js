@@ -1,120 +1,70 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+const connectDB = require('./config/db');
+const Product = require('./models/Product');
+const defaultProducts = require('./utils/seedData');
+
+const productRoutes = require('./routes/products');
+const uploadRoutes = require('./routes/upload');
+const contactRoutes = require('./routes/contact');
+const newsletterRoutes = require('./routes/newsletter');
 
 const app = express();
 const port = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-const products = [
-  {
-    id: 1,
-    name: 'Classic White Sneaker',
-    price: 79.99,
-    description: 'A timeless sneaker for everyday comfort and style.',
-    image: 'https://images.unsplash.com/photo-1519741496100-a9e7c32d5db1?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 2,
-    name: 'Running Performance Shoe',
-    price: 119.99,
-    description: 'Engineered for speed, cushioning, and long-distance support.',
-    image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 3,
-    name: 'Leather Boot',
-    price: 149.99,
-    description: 'Durable leather boot built for rugged city and trail use.',
-    image: 'https://images.unsplash.com/photo-1528701800489-38e7f3e0a3d0?auto=format&fit=crop&w=800&q=80'
-  }
-];
+// Ensure temp upload dir exists
+const uploadDir = '/tmp/vien-uploads';
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
+// Routes
+app.use('/api/products', productRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/newsletter', newsletterRoutes);
 
-
-app.get('/api/products', (req, res) => {
-  res.json(products);
+app.get('/api', (_req, res) => {
+  res.json({ message: 'Welcome to the Vien Shoes API' });
 });
 
-app.get('/api', (req, res) => {
-  res.json({ message: 'Welcome to the ShoesCo backend API!' });
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'Vien Shoes backend' });
 });
 
-
-app.get('/api/products/:id', (req, res) => {
-  const productId = Number(req.params.id);
-  const product = products.find((item) => item.id === productId);
-
-  if (!product) {
-    return res.status(404).json({ error: 'Product not found' });
-  }
-
-  res.json(product);
+app.get('/api/categories', (_req, res) => {
+  res.json([
+    { slug: 'boots', name: 'Boots', description: 'Rugged, weathered, built to last' },
+    { slug: 'sneakers', name: 'Sneakers', description: 'Street-ready edge' },
+    { slug: 'sandals', name: 'Sandals', description: 'Stripped-back comfort' },
+    { slug: 'loafers', name: 'Loafers', description: 'Effortless sophistication' },
+    { slug: 'heels', name: 'Heels', description: 'Bold statement pieces' },
+    { slug: 'oxfords', name: 'Oxfords', description: 'Heritage craftsmanship' },
+    { slug: 'other', name: 'Other', description: 'One of a kind' },
+  ]);
 });
 
-app.post('/api/products', (req, res) => {
-  const { name, price, description, image } = req.body;
+// Startup
+const startServer = async () => {
+  await connectDB();
 
-  if (!name || !price || !description || !image) {
-    return res.status(400).json({ error: 'Missing required product fields' });
+  // Seed default products if collection is empty
+  const count = await Product.countDocuments();
+  if (count === 0) {
+    await Product.insertMany(defaultProducts);
+    console.log('Seeded default products');
   }
 
-  const nextId = products.length ? Math.max(...products.map((item) => item.id)) + 1 : 1;
-  const newProduct = {
-    id: nextId,
-    name,
-    price: Number(price),
-    description,
-    image
-  };
+  app.listen(port, () => {
+    console.log(`Vien Shoes backend running at http://localhost:${port}`);
+  });
+};
 
-  products.push(newProduct);
-  res.status(201).json(newProduct);
-});
-
-app.put('/api/products/:id', (req, res) => {
-  const productId = Number(req.params.id);
-  const product = products.find((item) => item.id === productId);
-
-  if (!product) {
-    return res.status(404).json({ error: 'Product not found' });
-  }
-
-  const { name, price, description, image } = req.body;
-
-  if (name) {
-    product.name = name;
-  }
-  if (price) {
-    product.price = Number(price);
-  }
-  if (description) {
-    product.description = description;
-  }
-  if (image) {
-    product.image = image;
-  }
-
-  res.json(product);
-});
-
-app.delete('/api/products/:id', (req, res) => {
-  const productId = Number(req.params.id);
-  const index = products.findIndex((item) => item.id === productId);
-
-  if (index === -1) {
-    return res.status(404).json({ error: 'Product not found' });
-  }
-
-  products.splice(index, 1);
-  res.status(204).end();
-});
-
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'ShoesCo backend' });
-});
-
-app.listen(port, () => {
-  console.log(`ShoesCo backend running at http://localhost:${port}`);
-});
+startServer();
