@@ -1,12 +1,13 @@
 {
   "name": "shoesco",
   "private": true,
+  "version": "1.0.0",
+  "description": "A starter full-stack project for a shoe selling company.",
   "workspaces": [
     "client",
     "server"
   ],
   "scripts": {
-    "install": "npm install",
     "dev": "npx concurrently \"npm --workspace client run dev\" \"npm --workspace server run dev\"",
     "client": "npm --workspace client run dev",
     "server": "npm --workspace server run dev",

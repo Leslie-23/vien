@@ -31,9 +31,16 @@ const products = [
   }
 ];
 
+
+
 app.get('/api/products', (req, res) => {
   res.json(products);
 });
+
+app.get('/api', (req, res) => {
+  res.json({ message: 'Welcome to the ShoesCo backend API!' });
+});
+
 
 app.get('/api/products/:id', (req, res) => {
   const productId = Number(req.params.id);
