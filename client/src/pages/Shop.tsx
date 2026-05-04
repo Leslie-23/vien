@@ -1,24 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-
-type Product = {
-  _id: string;
-  name: string;
-  price: number;
-  comparePrice: number;
-  description: string;
-  image: { url: string; publicId: string };
-  gallery: { url: string; alt: string }[];
-  category: string;
-  material: string;
-  color: string;
-  inStock: boolean;
-  featured: boolean;
-  sizes: number[];
-  rating: number;
-  reviewCount: number;
-  tags: string[];
-};
+import { apiFetch } from '../lib/api';
+import type { Product } from '../types';
 
 const CATEGORIES = [
   { slug: '', label: 'All' },
@@ -27,7 +10,6 @@ const CATEGORIES = [
   { slug: 'oxfords', label: 'Oxfords' },
   { slug: 'loafers', label: 'Loafers' },
   { slug: 'sandals', label: 'Sandals' },
-  { slug: 'heels', label: 'Heels' },
 ];
 
 export default function Shop() {
@@ -35,21 +17,34 @@ export default function Shop() {
   const activeCategory = searchParams.get('category') || '';
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [sort, setSort] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
+    setError('');
+
     const params = new URLSearchParams();
     if (activeCategory) params.set('category', activeCategory);
     if (sort) params.set('sort', sort);
 
-    fetch(`/api/products?${params.toString()}`)
-      .then((r) => r.json())
-      .then((data: Product[]) => {
+    apiFetch<Product[]>(`/api/products?${params.toString()}`)
+      .then((data) => {
+        if (cancelled) return;
         setProducts(data);
-        setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Failed to load products');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeCategory, sort]);
 
   const setCategory = (slug: string) => {
@@ -62,7 +57,6 @@ export default function Shop() {
 
   return (
     <div className="shop-page">
-      {/* ── Shop Hero ───────────────────────────────────── */}
       <section className="shop-hero">
         <div className="shop-hero-img-strip">
           <img
@@ -83,10 +77,11 @@ export default function Shop() {
           Every pair, hand-picked. Filter by category, sort by what matters, and
           find the shoes that match your stride.
         </p>
-        <span className="shop-count">{products.length} styles available</span>
+        <span className="shop-count">
+          {loading ? 'Loading…' : `${products.length} styles available`}
+        </span>
       </section>
 
-      {/* ── Filters ─────────────────────────────────────── */}
       <div className="shop-toolbar">
         <div className="filter-tabs">
           {CATEGORIES.map((cat) => (
@@ -103,6 +98,7 @@ export default function Shop() {
           className="sort-select"
           value={sort}
           onChange={(e) => setSort(e.target.value)}
+          aria-label="Sort products"
         >
           <option value="">Newest</option>
           <option value="price_asc">Price: Low &rarr; High</option>
@@ -111,11 +107,15 @@ export default function Shop() {
         </select>
       </div>
 
-      {/* ── Product Grid ────────────────────────────────── */}
       {loading ? (
         <div className="loading-container">
           <div className="loading-spinner" />
           <p className="loading-text">Loading collection...</p>
+        </div>
+      ) : error ? (
+        <div className="empty-collection">
+          <h3>Couldn't load the collection</h3>
+          <p>{error}</p>
         </div>
       ) : products.length === 0 ? (
         <div className="empty-collection">
@@ -132,7 +132,7 @@ export default function Shop() {
                 {p.featured && p.inStock && (
                   <span className="badge">Featured</span>
                 )}
-                {p.comparePrice > 0 && p.inStock && !p.featured && (
+                {p.comparePrice > p.price && p.inStock && !p.featured && (
                   <span className="badge badge-sale">Sale</span>
                 )}
                 {p.gallery.length > 1 && (
@@ -140,7 +140,6 @@ export default function Shop() {
                     +{p.gallery.length} photos
                   </span>
                 )}
-                <div className="product-quick-view">Quick View</div>
               </div>
               <div className="product-info">
                 <span className="product-category">{p.category}</span>
@@ -151,10 +150,8 @@ export default function Shop() {
                 <p className="product-desc">{p.description}</p>
                 <div className="product-meta">
                   <div className="product-pricing">
-                    <span className="product-price">
-                      ${p.price.toFixed(2)}
-                    </span>
-                    {p.comparePrice > 0 && (
+                    <span className="product-price">${p.price.toFixed(2)}</span>
+                    {p.comparePrice > p.price && (
                       <span className="product-compare-price">
                         ${p.comparePrice.toFixed(2)}
                       </span>

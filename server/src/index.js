@@ -1,8 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
 const connectDB = require('./config/db');
 const Product = require('./models/Product');
 const defaultProducts = require('./utils/seedData');
@@ -19,13 +17,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Ensure temp upload dir exists
-const uploadDir = '/tmp/vien-uploads';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Routes
 app.use('/api/products', productRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/contact', contactRoutes);
@@ -43,19 +34,26 @@ app.get('/api/categories', (_req, res) => {
   res.json([
     { slug: 'boots', name: 'Boots', description: 'Rugged, weathered, built to last' },
     { slug: 'sneakers', name: 'Sneakers', description: 'Street-ready edge' },
-    { slug: 'sandals', name: 'Sandals', description: 'Stripped-back comfort' },
-    { slug: 'loafers', name: 'Loafers', description: 'Effortless sophistication' },
-    { slug: 'heels', name: 'Heels', description: 'Bold statement pieces' },
     { slug: 'oxfords', name: 'Oxfords', description: 'Heritage craftsmanship' },
+    { slug: 'loafers', name: 'Loafers', description: 'Effortless sophistication' },
+    { slug: 'sandals', name: 'Sandals', description: 'Stripped-back comfort' },
     { slug: 'other', name: 'Other', description: 'One of a kind' },
   ]);
 });
 
-// Startup
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  const status = err.status || 500;
+  res.status(status).json({ error: err.message || 'Server error' });
+});
+
 const startServer = async () => {
   await connectDB();
 
-  // Seed default products if collection is empty
   const count = await Product.countDocuments();
   if (count === 0) {
     await Product.insertMany(defaultProducts);

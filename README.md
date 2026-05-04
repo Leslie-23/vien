@@ -4,7 +4,7 @@ An edgy, rustic-themed full-stack shoe selling website built with React + Vite (
 
 ## Structure
 
-- `client/` — React + Vite + React Router frontend
+- `client/` — React + Vite + React Router frontend (TypeScript)
 - `server/` — Express + Mongoose backend with Cloudinary image handling
 
 ## Pages
@@ -16,49 +16,29 @@ An edgy, rustic-themed full-stack shoe selling website built with React + Vite (
 | `/shop/:id` | Product Detail — full product view with sizes |
 | `/about` | Our Story — brand values, process |
 | `/contact` | Contact — form + workshop info |
+| `*` | 404 |
 
 ## Prerequisites
 
 - **Node.js** ≥ 18
 - **MongoDB** (local or Atlas)
-- **Cloudinary** account (for image uploads)
+- **Cloudinary** account (only needed for real image uploads)
 
 ## Setup
-
-1. Clone the repo:
 
 ```bash
 git clone https://github.com/Leslie-23/vien.git
 cd vien
-```
-
-2. Copy the environment file and fill in your credentials:
-
-```bash
-cp .env.example server/.env
-```
-
-Edit `server/.env` with your MongoDB URI and Cloudinary keys.
-
-3. Install dependencies:
-
-```bash
+cp .env.example server/.env   # then edit server/.env
 npm install
-```
-
-4. Start both apps:
-
-```bash
 npm run dev
 ```
 
-5. Open the frontend:
-
-- http://localhost:3000
-
-The frontend proxies API requests to the backend on port `4000`.
+Open the frontend at http://localhost:3000 — Vite proxies `/api` to the backend on port `4000`.
 
 ## Environment Variables
+
+Server (`server/.env`):
 
 | Variable | Description |
 | ----------------------- | -------------------------------- |
@@ -67,14 +47,21 @@ The frontend proxies API requests to the backend on port `4000`.
 | `CLOUDINARY_API_KEY` | Cloudinary API key |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret |
 | `PORT` | Backend port (default: 4000) |
+| `ADMIN_TOKEN` | Token required for admin endpoints (e.g. `GET /api/contact`). Send as `x-admin-token` header. |
+
+Client (optional, `client/.env`):
+
+| Variable | Description |
+| ----------------- | ----------------------------------------------------- |
+| `VITE_API_BASE` | Absolute API origin. Only set when the client is deployed separately from the API. In dev the Vite proxy handles `/api`. |
 
 ## API Endpoints
 
 ### Products
 
-- `GET /api/products` — list all (supports `?category=`, `?featured=true`, `?sort=price_asc|price_desc|name`)
+- `GET /api/products` — list all (supports `?category=`, `?featured=true`, `?inStock=true`, `?sort=price_asc|price_desc|name`)
 - `GET /api/products/:id` — get product details
-- `POST /api/products` — create product (supports `multipart/form-data` for image upload)
+- `POST /api/products` — create product (`multipart/form-data` for image upload)
 - `PUT /api/products/:id` — update product
 - `DELETE /api/products/:id` — delete product
 
@@ -86,17 +73,21 @@ The frontend proxies API requests to the backend on port `4000`.
 ### Contact
 
 - `POST /api/contact` — submit contact form
-- `GET /api/contact` — list submissions
+- `GET /api/contact` — list submissions **(admin: requires `x-admin-token`)**
 
 ### Newsletter
 
-- `POST /api/newsletter` — subscribe to newsletter
+- `POST /api/newsletter` — subscribe
 
 ### Misc
 
-- `GET /api` — API welcome message
+- `GET /api` — welcome
 - `GET /api/health` — health check
 - `GET /api/categories` — list shoe categories
+
+## Cart
+
+The cart lives entirely on the client (React Context + `localStorage`, key `vien-cart-v1`). Checkout is a placeholder — wire it up to your payment provider when you're ready.
 
 ## Tech Stack
 

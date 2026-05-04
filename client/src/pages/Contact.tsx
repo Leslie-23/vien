@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { apiFetch } from '../lib/api';
 
 export default function Contact() {
   const [form, setForm] = useState({
@@ -10,23 +11,26 @@ export default function Contact() {
   const [status, setStatus] = useState('');
   const [sending, setSending] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSending(true);
     setStatus('');
 
-    fetch('/api/contact', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        setStatus(data.message || 'Sent!');
-        setForm({ name: '', email: '', subject: '', message: '' });
-      })
-      .catch(() => setStatus('Something went wrong. Please try again.'))
-      .finally(() => setSending(false));
+    try {
+      const data = await apiFetch<{ message?: string }>('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      setStatus(data.message || 'Sent!');
+      setForm({ name: '', email: '', subject: '', message: '' });
+    } catch (err) {
+      setStatus(
+        err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+      );
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -47,9 +51,9 @@ export default function Contact() {
           <div className="contact-info-card">
             <h3>Visit the Workshop</h3>
             <p>
-              42 Cobblestone Lane
+              218 SE Ankeny St
               <br />
-              Brooklyn, NY 11201
+              Portland, OR 97214
             </p>
           </div>
           <div className="contact-info-card">
@@ -75,9 +79,7 @@ export default function Contact() {
               <input
                 name="name"
                 value={form.name}
-                onChange={(e) =>
-                  setForm({ ...form, name: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
               />
             </label>
@@ -87,9 +89,7 @@ export default function Contact() {
                 name="email"
                 type="email"
                 value={form.email}
-                onChange={(e) =>
-                  setForm({ ...form, email: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
               />
             </label>
@@ -99,9 +99,7 @@ export default function Contact() {
             <input
               name="subject"
               value={form.subject}
-              onChange={(e) =>
-                setForm({ ...form, subject: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, subject: e.target.value })}
               placeholder="Optional"
             />
           </label>
@@ -111,9 +109,7 @@ export default function Contact() {
               name="message"
               rows={6}
               value={form.message}
-              onChange={(e) =>
-                setForm({ ...form, message: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, message: e.target.value })}
               required
             />
           </label>

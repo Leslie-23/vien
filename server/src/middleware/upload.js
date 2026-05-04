@@ -1,10 +1,15 @@
 const multer = require('multer');
 const path = require('path');
+const os = require('os');
+const fs = require('fs');
+
+const uploadDir = path.join(os.tmpdir(), 'vien-uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, '/tmp/vien-uploads');
-  },
+  destination: (_req, _file, cb) => cb(null, uploadDir),
   filename: (_req, file, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     cb(null, `${unique}${path.extname(file.originalname)}`);
@@ -26,7 +31,7 @@ const fileFilter = (_req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
 module.exports = upload;

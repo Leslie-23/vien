@@ -3,10 +3,9 @@ const router = express.Router();
 const Product = require('../models/Product');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middleware/upload');
-const fs = require('fs');
+const { uploadToCloudinary } = require('../utils/cloudinaryUpload');
 
-// GET all products (with optional filters)
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const { category, featured, inStock, sort } = req.query;
     const filter = {};
@@ -23,23 +22,21 @@ router.get('/', async (req, res) => {
     const products = await Product.find(filter).sort(sortOption);
     res.json(products);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-// GET single product
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
     res.json(product);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-// POST new product (with optional image upload)
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/', upload.single('image'), async (req, res, next) => {
   try {
     const { name, price, description, category, sizes, featured } = req.body;
 
@@ -50,12 +47,8 @@ router.post('/', upload.single('image'), async (req, res) => {
     let imageData = { url: '', publicId: '' };
 
     if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: 'vien-shoes',
-        transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }],
-      });
+      const result = await uploadToCloudinary(req.file.path);
       imageData = { url: result.secure_url, publicId: result.public_id };
-      fs.unlinkSync(req.file.path);
     } else if (req.body.imageUrl) {
       imageData = { url: req.body.imageUrl, publicId: '' };
     }
@@ -72,12 +65,11 @@ router.post('/', upload.single('image'), async (req, res) => {
 
     res.status(201).json(product);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-// PUT update product
-router.put('/:id', upload.single('image'), async (req, res) => {
+router.put('/:id', upload.single('image'), async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
@@ -93,16 +85,11 @@ router.put('/:id', upload.single('image'), async (req, res) => {
     if (inStock !== undefined) product.inStock = inStock === 'true';
 
     if (req.file) {
-      // Remove old image from Cloudinary if present
       if (product.image.publicId) {
         await cloudinary.uploader.destroy(product.image.publicId);
       }
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: 'vien-shoes',
-        transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }],
-      });
+      const result = await uploadToCloudinary(req.file.path);
       product.image = { url: result.secure_url, publicId: result.public_id };
-      fs.unlinkSync(req.file.path);
     } else if (req.body.imageUrl) {
       product.image = { url: req.body.imageUrl, publicId: '' };
     }
@@ -110,12 +97,11 @@ router.put('/:id', upload.single('image'), async (req, res) => {
     await product.save();
     res.json(product);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-// DELETE product
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
@@ -127,7 +113,7 @@ router.delete('/:id', async (req, res) => {
     await product.deleteOne();
     res.status(204).end();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
